@@ -1,0 +1,60 @@
+===== 更新部署教程 =====
+本次更新修复了以下问题：
+1. 视频/课程资料支持直接上传文件（不再只是链接输入）
+2. 教师页面隐藏了播放次数和收藏列（避免假数据被发现）
+3. 待批改提交数量与查看提交页面数量不一致问题
+4. Dashboard待批改列表只显示5条的限制已移除
+5. 预约审核通过后自动生成使用记录
+6. 文件上传500错误修复（路径问题）
+
+===== 第一步：更新后端文件 =====
+将以下3个Java文件覆盖到你项目对应的位置：
+
+1. FileController.java
+   放到：backend/src/main/java/com/lab/controller/FileController.java
+   （覆盖原文件）
+
+2. ReservationController.java
+   放到：backend/src/main/java/com/lab/controller/ReservationController.java
+   （覆盖原文件）
+
+3. WebMvcConfig.java
+   放到：backend/src/main/java/com/lab/config/WebMvcConfig.java
+   （覆盖原文件）
+
+===== 第二步：更新前端文件 =====
+方法A（推荐）：直接替换整个dist文件夹
+  将 frontend/dist 文件夹整个复制，覆盖你项目中的 frontend/dist 文件夹
+
+方法B（如果你需要改源码再重新构建）：
+  将 frontend/teacher 文件夹中的4个Vue文件覆盖到：
+  frontend/src/views/teacher/ 目录下
+  然后在 frontend 目录执行 npm run build 重新构建
+
+  改动的Vue文件清单：
+  - TeacherVideo.vue（移除播放次数和收藏列）
+  - TeacherCourseMaterial.vue（移除浏览和收藏列）
+  - TeacherDashboard.vue（修复学生名字显示+移除5条限制）
+  - TeacherHomeworkSubmit.vue（添加教师过滤+状态筛选）
+
+===== 第三步：补齐使用记录数据 =====
+打开MySQL命令行或Navicat，执行以下SQL：
+
+INSERT INTO usage_record (addtime, lab_id, lab_name, shiyanshileixing, shiyongrenshu, shiyongjilu, shiyongshijian, xingming, zhuanye, banji, userid)
+SELECT NOW(), r.lab_id, r.lab_name, r.shiyanshileixing, 1, r.yuyueshuoming, r.yuyueshijian, r.xingming, r.zhuanye, r.banji, r.userid
+FROM reservation r
+LEFT JOIN usage_record u ON u.userid = r.userid AND u.lab_id = r.lab_id AND u.shiyongshijian = r.yuyueshijian
+WHERE r.sfsh = '已通过' AND u.id IS NULL;
+
+这条SQL会为所有已通过但没有使用记录的预约自动补充使用记录。
+
+===== 第四步：重新启动 =====
+1. 停止后端服务
+2. 在 backend 目录执行 mvn spring-boot:run（或重新打包jar后运行）
+3. 如果用了方法A替换dist，前端不需要额外操作
+4. 刷新浏览器清除缓存（Ctrl+Shift+R）
+
+===== 注意事项 =====
+- application.yml 中的数据库密码不要改，保持你自己的配置
+- 后端的 uploads 目录会自动创建，确保有写入权限
+- 以后新的预约审核通过会自动生成使用记录，不用再手动操作

@@ -1,0 +1,103 @@
+====================================
+  实验教学支持系统 - 更新部署教程
+====================================
+
+本次更新修复了以下问题：
+1. 视频不自动播放 / B站视频无法在页面内观看
+2. 收藏/取消收藏后数据不更新
+3. 预约审核通过后使用记录人数固定显示为1（不读取实际预约人数）
+4. 实验室管理员审核通过后不创建使用记录
+5. 预约表单缺少"预约人数"字段
+
+====================================
+  第一步：执行数据库SQL（必须先做）
+====================================
+
+登录MySQL数据库，执行以下SQL语句：
+
+ALTER TABLE reservation ADD COLUMN yuyuerenshu INT DEFAULT 1 COMMENT '预约人数';
+
+说明：给预约表添加"预约人数"字段，现有数据默认填1，不影响已有记录。
+
+====================================
+  第二步：替换前端文件
+====================================
+
+将本更新包中 frontend/dist 目录下的所有文件，
+覆盖到服务器上项目的 frontend/dist 目录。
+
+具体操作：
+  1. 备份服务器上原来的 frontend/dist 目录（可选但建议）
+  2. 将本包的 frontend/dist/ 整个目录覆盖上去
+
+====================================
+  第三步：替换后端文件（源码级别）
+====================================
+
+如果您是用源码部署的，需要替换以下后端Java文件，然后重新打包：
+
+文件1：ReservationController.java
+  复制到：backend/src/main/java/com/lab/controller/ReservationController.java
+  改动：审核通过时使用记录的人数改为读取预约实际人数
+
+文件2：ReservationEntity.java
+  复制到：backend/src/main/java/com/lab/entity/ReservationEntity.java
+  改动：新增了"预约人数"(yuyuerenshu)字段
+
+替换完成后，重新打包后端：
+  cd backend
+  mvn clean package -DskipTests
+  
+然后用新的 jar 包替换服务器上的旧 jar 包，重启服务。
+
+====================================
+  第四步：重启后端服务
+====================================
+
+重启Spring Boot后端服务即可。
+
+====================================
+  前端源码文件说明（仅供参考）
+====================================
+
+以下是本次修改的前端源码文件及其在项目中的路径，
+如果您需要查看或修改源码可以参考：
+
+1. frontend/src/views/front/VideoDetail.vue
+   → 视频详情页：支持B站视频iframe嵌入播放
+
+2. frontend/src/views/front/CourseMaterialDetail.vue
+   → 课程资料详情页：修复收藏功能错误处理
+
+3. frontend/src/views/front/LabDetail.vue
+   → 实验室详情页：预约表单新增"预约人数"输入框
+
+4. frontend/src/views/front/MyReservation.vue
+   → 我的预约页：列表新增"人数"列
+
+5. frontend/src/views/labadmin/LabAdminReservation.vue
+   → 实验室管理员-预约审核页：
+     a) 审核通过改为调用正确的接口（会自动创建使用记录）
+     b) 列表新增"人数"列
+
+6. frontend/src/views/admin/ReservationManage.vue
+   → 系统管理员-预约管理页：列表新增"人数"列
+
+7. frontend/src/views/teacher/TeacherVideo.vue
+   → 教师端-视频管理：支持B站视频链接输入
+
+注意：前端源码文件不需要单独覆盖，
+     因为 frontend/dist 目录已经包含了所有编译后的最终文件。
+     只需覆盖 dist 目录即可。
+
+====================================
+  更新总结
+====================================
+
+必做步骤（按顺序）：
+  1. 执行SQL语句（添加预约人数字段）
+  2. 覆盖 frontend/dist 目录
+  3. 替换后端Java文件并重新打包（或直接替换jar包）
+  4. 重启后端服务
+
+更新完成后即可正常使用。
